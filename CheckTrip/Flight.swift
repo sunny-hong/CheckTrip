@@ -20,7 +20,8 @@ class Flight: NSObject{
     
     var arrivalTerminal:String?
 
-    var dateLocal:String?
+    var departureDateLocal:String?
+    var arrivalDateLocal:String?
 
     var departureAirportFsCode:String?
     

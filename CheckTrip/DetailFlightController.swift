@@ -35,7 +35,9 @@ class DetailFlightController: UIViewController {
     var willCheckBag: Bool!
     
     var flightStatsUrl: String = "https://api.flightstats.com/flex/flightstatus/rest/v2/json/flight/status/"
+    var tsaURL: String = "http://apps.tsa.dhs.gov/MyTSAWebService/GetTSOWaitTimes.ashx?ap="
     var flightInfo = FlightInfo()
+    var tsaInfo = [TSAInfo]()
     var flightData:[String:String]! = [:]
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -50,13 +52,14 @@ class DetailFlightController: UIViewController {
         
         spinner.startAnimating()
         
+        
+        
         let URL = self.flightStatus(airlineCode, airlineNumber: flightNumber, date: flightDate)
         self.getLatestInfo(URL)
         
-        
-        
-        
-        
+        //let URLForTSA: String = "http://apps.tsa.dhs.gov/MyTSAWebService/GetTSOWaitTimes.ashx?ap=ATL&output=json"
+        let URLForTSA = self.TSAURL("SEA")
+        self.getTSAInfo(URLForTSA)
         
         // Do any additional setup after loading the view.
     }
@@ -66,6 +69,76 @@ class DetailFlightController: UIViewController {
         // Dispose of any resources that can be recreated.
     }
     
+    func TSAURL(_ depShortCode: String) -> String{
+        //break up date
+        let url = tsaURL.appending("\(depShortCode)&output=json")
+        return url
+        
+    }
+    
+    func getTSAInfo(_ url: String) {
+        let request = URLRequest(url: URL(string: url)! as URL)
+        let urlSession = URLSession.shared
+        let task = urlSession.dataTask(with: request as URLRequest, completionHandler: { (data, response, error) -> Void in
+            
+            if let error = error {
+                print(error)
+                return
+            }
+            
+            print(data)
+            // Parse JSON data
+            if let data = data {
+                
+                self.tsaInfo = self.parseTSAJsonData(data: data as NSData)
+                
+            }
+            
+        })
+        
+        task.resume()
+    }
+    
+    func parseTSAJsonData(data: NSData) -> [TSAInfo] {
+        
+        var tsaInfo = [TSAInfo]()
+        
+        do {
+            let jsonResult = try JSONSerialization.jsonObject(with: data as Data, options: JSONSerialization.ReadingOptions.mutableContainers) as? NSDictionary
+            
+            print(jsonResult)
+            let jsonTSAs = jsonResult?["WaitTimes"] as! [AnyObject]
+            for jsonTSA in jsonTSAs {
+                let info = TSAInfo()
+                info.CheckpointIndex = jsonTSA["CheckpointIndex"] as! String
+                info.Created_Datetime = jsonTSA["Created_Datetime"] as! String
+                if(jsonTSA["WaitTime"] as! String == "1"){
+                    info.WaitTimeIndex = "0 min"
+                }else if(jsonTSA["WaitTime"] as! String == "2"){
+                    info.WaitTimeIndex = "1 - 10 min"
+                }else if(jsonTSA["WaitTime"] as! String == "3"){
+                    info.WaitTimeIndex = "11 - 20 min"
+                }else if(jsonTSA["WaitTime"] as! String == "4"){
+                    info.WaitTimeIndex = "21 - 30 min"
+                }else if(jsonTSA["WaitTime"] as! String == "5"){
+                    info.WaitTimeIndex = "31 - 45 min"
+                }else if(jsonTSA["WaitTime"] as! String == "6"){
+                    info.WaitTimeIndex = "46 - 60 min"
+                }else if(jsonTSA["WaitTime"] as! String == "7"){
+                    info.WaitTimeIndex = "61 - 90 min"
+                }else if(jsonTSA["WaitTime"] as! String == "8"){
+                    info.WaitTimeIndex = "91 - 120 min"
+                }else{info.WaitTimeIndex = "120+ min"}
+                
+                tsaInfo.append(info)
+            }
+            
+        } catch {
+            print(error)
+        }
+        
+        return tsaInfo
+    }
     
     
     func flightStatus(_ airlineName:String,airlineNumber:String,date:String) -> String{
@@ -78,7 +151,6 @@ class DetailFlightController: UIViewController {
         let day = dataArr[2]
         let url = flightStatsUrl.appending("\(airlineName)/\(airlineNumber)/dep/\(year)/\(month)/\(day)?appId=ebdf085d&appKey=1668e8d129b1686e7945852643b0ae44&utc=false")
         
-        print(url)
         
         return url
         
@@ -94,7 +166,6 @@ class DetailFlightController: UIViewController {
                 return
             }
             
-            print(data)
             // Parse JSON data
             if let data = data {
                 
@@ -148,8 +219,6 @@ class DetailFlightController: UIViewController {
             
             let jsonFlights = jsonResult?["flightStatuses"] as! [AnyObject]
             
-            print(jsonFlights)
-            
             for jsonFlight in jsonFlights {
                 flightDictionary["departureAirportFsCode"] =  jsonFlight["departureAirportFsCode"] as? String
                 flightDictionary["arrivalAirportFsCode"] =  jsonFlight["arrivalAirportFsCode"] as? String
@@ -168,10 +237,11 @@ class DetailFlightController: UIViewController {
                 
                 let schDep = jsonFlight["departureDate"] as! [String:AnyObject]
 //                flight.schdepartureTimeNumberLabel = schDep["dateLocal"] as! String
-                flightDictionary["dateLocal"] =  schDep["dateLocal"] as? String
+                flightDictionary["departureDateLocal"] =  schDep["dateLocal"] as? String
+               
                 let schArr = jsonFlight["arrivalDate"] as! [String:AnyObject]
 //                flight.scharrivalFlightTimeLabel = schArr["dateLocal"] as! String
-                flightDictionary["dateLocal"] =  schArr["dateLocal"] as? String
+                flightDictionary["arrivalDateLocal"] =  schArr["dateLocal"] as? String
                 
                 if !willCheckBag {
                     flightDictionary["willCheckBag"] = "false"
@@ -204,7 +274,15 @@ class DetailFlightController: UIViewController {
         return flightDictionary
     }
     
-    
+    func stringToDate(date:String){
+        let formatter = DateFormatter()
+        formatter.dateStyle = .full
+        if let formattedDate = formatter.date(from:date){
+            print(formattedDate)
+        
+        }
+        
+    }
     
     
     func configureStorage() {

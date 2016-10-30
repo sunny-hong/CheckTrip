@@ -44,7 +44,7 @@ extension MainViewController: UITableViewDataSource,UITableViewDelegate {
         
         cell?.departureTimeNumberLabel?.text = "12:00 pm"
         
-        cell?.departureFlightDateLabel?.text = "12/12/2016"
+        cell?.departureFlightDateLabel?.text = (flight.departureDateLocal!)
         
         cell?.departureGateLabel?.text = "Gate: \(flight.departureGate!)"
         
@@ -54,11 +54,9 @@ extension MainViewController: UITableViewDataSource,UITableViewDelegate {
         cell?.arrivalFlightLabel?.text = flight.arrivalAirportFsCode!
         
 
-        
-        
         cell?.arivalFlightTimeLabel?.text = "3:00 AM"
         
-        cell?.arivalFlightDateLabel?.text = "01/01/2016"
+        cell?.arivalFlightDateLabel?.text = flight.arrivalDateLocal
         
         cell?.arrivalGateLabel?.text = "Gate: \(flight.arrivalGate!)"
         
@@ -67,13 +65,20 @@ extension MainViewController: UITableViewDataSource,UITableViewDelegate {
         return cell!
     }
     
-//    func stringToDate(date:String) -> String{
-//        let formatter = DateFormatter()
-//        formatter.dateFormat = "MM/dd/yyy"
-//        
-//        return formatter.date(from: date)?.description
-//    }
-//    
+    func stringToDate(date:String) -> String{
+        let formatter = DateFormatter()
+        formatter.dateStyle = .full
+        
+        
+        
+        let dateFormatted = formatter.date(from: date)
+        
+        print(dateFormatted)
+        
+        
+        return formatter.string(from: dateFormatted!)
+    }
+    
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
@@ -108,6 +113,9 @@ extension MainViewController: UITableViewDataSource,UITableViewDelegate {
             })
 
         }
+        
+        tableView.deselectRow(at: indexPath, animated: true)
+        
     }
     
     
@@ -143,10 +151,7 @@ extension MainViewController: UITableViewDataSource,UITableViewDelegate {
                 
                 
                 self.sendSMS(attachment: defaultText)
-//                
-//                let activityController = UIActivityViewController(activityItems:
-//                    [defaultText], applicationActivities: nil)
-//                self.present(activityController, animated: true, completion: nil)
+//            
         })
         
         shareAction.backgroundColor = UIColor.checkTripBlue()
